@@ -1,0 +1,56 @@
+:root {
+  --dark: #111518;
+  --light: #1c2227;
+  --textLight:#b6bee3;
+  --text : #7983bb ;
+  --lighblue:#0d6efd;
+}
+
+.App{
+  background:#111518;
+}
+
+.miniImage{
+  height: 25px;
+}
+
+.dashboard{
+  width: 90%;
+  margin: auto;
+  height: 90vh;
+}
+
+.acordiontabs{
+  width: 500px;
+}
+
+.bg{
+  background-color: #25293c!important;
+  color: white;
+}
+
+p{
+  margin: 0;
+  color: var(--text);
+}
+
+.button{
+  border: 1px solid var(--lighblue);
+  background-color: var(--lighblue);
+  border-radius: 10px;
+  padding: 5px 15px 5px 15px ;
+  color: white;
+}
+
+.element{
+  min-height: 45vh;
+  border-top:3px solid var(--lighblue);
+  box-shadow: 7px 7px 5px 4px #00000066;
+}
+
+@media (max-width:1080px) {
+  
+  .element{
+    width: 100%!important;
+  }
+}

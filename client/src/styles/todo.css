@@ -1,0 +1,11 @@
+.todoDiv{
+    padding: 17px;
+    border-radius: 10px;
+    background-color: var(--light);
+    width: 49%;
+}
+
+.todoInputs{
+    display: flex;
+    gap: 5px;
+}

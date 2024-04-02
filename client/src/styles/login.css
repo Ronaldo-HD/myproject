@@ -1,0 +1,39 @@
+.loginbody{
+    background-color: var(--dark);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height: 100vh;
+}
+
+.loginform{
+    width: 400px;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--light);
+    padding: 20px;
+    box-shadow: 1px 1px 20px 20px #0000001f
+}
+
+input{
+    background-color: transparent;
+    border: 1px solid #6666667d;
+    padding: 7px;
+    border-radius: 10px ;
+    color: white;
+
+}
+input:hover{
+    border: 1px solid slateblue!important;
+}
+
+#loginButton{
+    padding: 10px;
+    border-radius: 10px;
+    background: #7367f0;
+    color: white;
+}
+
+.spans{
+    padding-bottom: 10px;
+}

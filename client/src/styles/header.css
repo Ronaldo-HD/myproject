@@ -1,0 +1,51 @@
+.header{
+    background-color:var(--light);
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.headerTop{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 10px 20px 10px 20px;
+}
+.headerLogo{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.headerNotification{
+    display: flex;
+    gap: 15px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.headerBottom{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    gap: 25px;
+}
+
+.buttons{
+    background-color:transparent;
+    color: white;
+    border: none;
+}
+
+.profileimage{
+    height: 50px;
+    border-radius: 50px;
+}
+
+.profileSection{
+    display: flex;
+}

@@ -1,0 +1,14 @@
+
+
+.mainPageBody{
+    padding-top: 20px;
+    width: 90%;
+    margin: auto;
+
+}
+
+.components{
+    display: flex;
+    width: 100%;
+    gap: 40px;
+}

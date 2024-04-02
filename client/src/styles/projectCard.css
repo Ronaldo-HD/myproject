@@ -1,0 +1,10 @@
+.projectCard{ 
+    border-radius: 10px;
+    width: 49%;
+    padding: 10px;
+    background-color: var(--light);
+}
+
+#root > div > div.mainPageBody > div > div.projectCard > div{
+    height: 58vh;
+}

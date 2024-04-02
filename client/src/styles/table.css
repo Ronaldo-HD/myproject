@@ -1,0 +1,36 @@
+.table{
+    width: 60%;
+    border: 1px solid white;
+    
+    border-radius: 10px;
+  
+    
+
+}
+
+.tableheader {
+    display: flex;
+    /* flex-direction: row; */
+    justify-content: space-between;
+    background-color: var(--light);
+    padding: 15px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+.tablerow{
+    display: flex;
+    padding: 15px;
+    /* flex-direction: row; */
+    justify-content: space-between;
+}
+
+.statusSpan{
+    border-radius: 10px;
+    padding: 5px;
+   
+}
+
+.inprogress{
+    background-color: red;
+}
