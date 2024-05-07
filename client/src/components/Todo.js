@@ -19,7 +19,7 @@ export default function Todo(){
         .then(response=>response.json())
         .then(res => {
             setTodos(res)
-            console.log(todos)
+          
            
         })
     }
@@ -52,13 +52,12 @@ export default function Todo(){
                   return response.json();
                 })
                 .then(data => {
-                  console.log('Success:', data);
-                  // Handle success response
+                
+            
                   fetchdata();
                 })
                 .catch(error => {
                   console.error('Error:', error);
-                  // Handle error
                 });
 
                 document.getElementById('todoInput').value=''; 
@@ -110,8 +109,8 @@ export default function Todo(){
              <div id='todobody' style={{display:'flex' , flexDirection:'column'}} >
              {  todos.length > 0 ? (
               todos.map(todo => (
-                    <div style={{display:'flex' , justifyContent:'space-between'}} key={todo.id}> {/* Assuming todos have unique ids */}
-                        <FormControlLabel control={<Checkbox defaultChecked />} label={todo.Description} />
+                    <div key={todo.ToDoID} style={{display:'flex' , justifyContent:'space-between'}} key={todo.id}> 
+                        <FormControlLabel control={<Checkbox  />} label={todo.Description} />
                         <IconButton onClick={() => deleteTodo(todo.ToDoID)} aria-label="delete">
                          <DeleteIcon />
                         </IconButton>
@@ -120,7 +119,7 @@ export default function Todo(){
                 ) : (
                     <p style={{textAlign:'center' , padding:'20px'}} >Your to do list is empty</p>
                 )}
-             {/* <FormControlLabel control={<Checkbox defaultChecked />} label="sddd" /> */}
+         
              </div>
         </div>
 

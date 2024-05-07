@@ -17,10 +17,14 @@ function Login(){
     fetch(url)
       .then(res=>res.json())
         .then(response => {
-        
+          console.log("Login" , response)
+       
           if (response.message=='Success') {
             window.location.href='/main'
             sessionStorage.setItem('FNP_userId',response.user.UserID)
+            sessionStorage.setItem('role',response.user.Role)
+            sessionStorage.setItem('image',response.user.ProfilePicture)
+            sessionStorage.setItem('name',response.user.Username)
           }else{
             alert('Login Failed')
           }
