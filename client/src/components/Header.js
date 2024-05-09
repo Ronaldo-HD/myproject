@@ -44,8 +44,7 @@ function Header({ onHeaderButtonClick }) {
             <div className="headerTop">
 
                 <div className="headerLogo">
-                    <img style={{ width: "35px" }} alt="logo" />
-                    <h1>Project</h1>
+                    <h1>TaskFLow</h1>
 
                     <div className="headerBottom">
                         <Button className="buttons" variant="primary" onClick={() => handleClick('Dashboard')}>

@@ -1,0 +1,201 @@
+select MainsetPayment.date as date,
+year(Date) as Year,
+month(Date) as Month, 
+MainsetPayment.Service,
+MainsetPayment.Provider,
+MainsetPayment.Country,
+MainsetPayment.Operator,
+MainsetPayment.Network,
+MainsetPayment.NetworksGroups,
+MainsetPayment.PublisherType,
+BP_Entities.name as Entity,
+Clients.MembershipUserID as ClientMemberShipUserID,
+MainsetPayment.CampaignType,
+GUID,
+sum(ifnull(userbehaviour.New, 0)) as New,
+sum(ifnull(userbehaviour.Renew , 0)) Renew,
+sum(ifnull(userbehaviour.Delete, 0)) as 'Delete',
+sum(ifnull(userbehaviour.Revenue, 0)) Revenue,
+sum(ifnull(userbehaviour.Net, 0)) Net,
+sum(ifnull(AdvSetPayment.advcost, 0)) advcost
+
+from (select distinct Campconcat,
+Clients.Name as Client,
+BP_Operators.name as Operator,
+BP_Countries.name as Country,
+BP_PaymentProviders.Name as Provider,
+CP_Services.Name as Service,
+ifnull(NetworksGroupsCategories.Name, 'Unknown') as Category,
+ifnull(BP_PublishersTypes.Name, 'Unknown') as PublisherType,
+ifnull(BP_OffersTypes.Name, 'Unknown') as CampaignType,
+Date,  
+SubMain.IDSmartCampaign,
+SubMain.IDOperator, 
+SubMain.IDService,
+Networks.Name as Network,
+Networks.ID as NetworkID,
+NetworksGroups.name as NetworksGroups,
+ifnull(BP_SmartCampaigns.GUID, 'Unknown') as GUID
+
+from (
+SELECT distinct concat(IDService,'-',IDOperator,'-',IDSmartCampaign,'-', mbconversiondate, '-', IDProvider, '-', IDOffer) as Campconcat ,
+IDService, IDOperator, IDSmartCampaign, mbconversiondate as date, IDProvider as IDPaymentProvider, IDOffer/*,
+Operator, Country*/
+FROM  MobiBox_Live.Installs_Client_Conversion_Summary 
+where mbconversiondate >= '2021-01-01' 
+and concat(IDClient, '-', IDCountry) in (
+select distinct concat(Clients.ID, '-', BP_Countries.ID) from MobiBox_Live.BP_PaymentProviders
+left join MobiBox_Live.BP_BillingChannels on BP_BillingChannels.IDPaymentProvider = BP_PaymentProviders.ID
+left join MobiBox_Live.BP_Operators on BP_BillingChannels.IDOperator = BP_Operators.ID
+left join MobiBox_Live.Clients on Clients.ID = BP_BillingChannels.IDClient
+left join MobiBox_Live.BP_Countries on BP_Operators.IDCountry = BP_Countries.ID
+where IDType=1 and concat(BP_Countries.ID,'-',IDPaymentProvider) not in ('1-2', '10-2')
+Group By Clients.ID, BP_Countries.ID)
+#GROUP BY mbconversiondate, IDOperator, IDService, IDProvider, IDSmartCampaign, IDOffer
+ 
+union all 
+ 
+select distinct concat(IDService,'-',IDOperator,'-',IDSmartCampaign,'-', SubscriptionDate, '-', IDPaymentProvider, '-', IDOffer) as Campconcat,
+IDService, IDOperator, IDSmartCampaign, SubscriptionDate as date, IDPaymentProvider, IDOffer/*,
+BP_Operators.name as Operator, BP_Countries.name as Country*/
+from  MobiBox_Live.Subscribers 
+left join BP_Operators on BP_Operators.ID = IDOperator
+left join BP_Countries on BP_Countries.ID = IDCountry
+where SubscriptionDate >= '2021-01-01'
+#group by  IDService, IDOperator, IDSmartCampaign, date, IDPaymentProvider, IDOffer
+
+union all 
+ 
+select distinct concat(IDService,'-',IDOperator,'-',IDSmartCampaign,'-', SubscriptionDate, '-', IDPaymentProvider, '-', IDOffer) as Campconcat,
+IDService, IDOperator, IDSmartCampaign, SubscriptionDate as date, IDPaymentProvider, IDOffer/*,
+BP_Operators.name as Operator, BP_Countries.name as Country*/
+from  MobiBox_Live.SubscribersDeleted
+left join BP_Operators on BP_Operators.ID = IDOperator
+left join BP_Countries on BP_Countries.ID = IDCountry
+where SubscriptionDate >= '2021-01-01'
+#group by  IDService, IDOperator, IDSmartCampaign, date, IDPaymentProvider, IDOffer
+) SubMain
+
+left join MobiBox_Live.CP_Services on CP_Services.ID=SubMain.IDService
+left join MobiBox_Live.BP_PaymentProviders on BP_PaymentProviders.ID=SubMain.IDPaymentProvider
+LEFT JOIN MobiBox_Live.Clients ON CP_Services.IDClient = Clients.ID
+left join MobiBox_Live.BP_SmartCampaigns on  BP_SmartCampaigns.ID= SubMain.IDSmartCampaign 
+LEFT JOIN MobiBox_Live.BP_PublishersTypes ON BP_SmartCampaigns.IDPublisherType = BP_PublishersTypes.ID
+LEFT JOIN MobiBox_Live.Networks ON BP_SmartCampaigns.IDNetwork = Networks.ID
+left join MobiBox_Live.NetworksGroups on  Networks.IDGroup=NetworksGroups.Id
+LEFT JOIN MobiBox_Live.NetworksGroupsCategories ON NetworksGroupsCategories.ID=NetworksGroups.IDNetworkGroupCategory
+left join MobiBox_Live.Offers ON IDOffer = Offers.ID 
+left join  MobiBox_Live.BP_OffersTypes on BP_OffersTypes.id=Offers.IDOfferType
+LEFT JOIN MobiBox_Live.BP_Operators on BP_Operators.ID = SubMain.IDOperator
+LEFT JOIN MobiBox_Live.BP_Countries on BP_Countries.ID = IDCountry) as MainsetPayment
+
+
+left join (SELECT distinct concat(t.IDService,'-',t.IDOperator,'-',t.IDSmartCampaign,'-', Date, '-', t.IDPaymentProvider, '-', IDOffer) as Campconcat,
+sum(Revenue) as Revenue, sum(New) AS New, sum(Renew) AS Renew, 
+sum(CASE WHEN Source='SubscribersDeleted' THEN New ELSE 0 END) AS 'Delete',
+(((sum(Revenue) * NetRatio) - (sum(Revenue) * NetRatio * ClientNetRatio) - (sum(Revenue) * NetRatio * ProviderAggregationRatio))) as Net,
+t.IDService, t.IDPaymentProvider, t.IDOperator, t.IDOffer, t.IDSmartCampaign from
+
+(SELECT dlr.Date, dlr.IDPaymentProvider, dlr.IDService, dlr.idoperator, dlr.IDSmartCampaign, sum(Revenue) AS Revenue,  dlr.USDExchange, dlr.Currency,
+ dlr.Source, dlr.IDOffer, sum(New) as New, sum(Renew) as Renew,
+CASE WHEN ServicesSlabsExceptions.NetRatio IS NOT NULL THEN ServicesSlabsExceptions.NetRatio ELSE dlr.ClientNetRatio END AS ClientNetRatio, 
+(CASE WHEN ProvaggException.AggregationRatio IS NULL THEN CASE WHEN (Provagg.AggregationRatio IS NOT NULL) THEN Provagg.AggregationRatio ELSE 0 END ELSE ProvaggException.AggregationRatio END) AS ProviderAggregationRatio, 
+CASE WHEN ProvidersOperatorsSlabsExceptions.NetRatio IS NOT NULL THEN ProvidersOperatorsSlabsExceptions.NetRatio ELSE ProvidersOperatorsSlabsLive.NetRatio END AS NetRatio, CASE WHEN ProvidersOperatorsSlabsExceptions.SlabMin IS NOT NULL THEN ProvidersOperatorsSlabsExceptions.SlabMin ELSE ProvidersOperatorsSlabsLive.SlabMin END AS SlabMin, CASE WHEN ProvidersOperatorsSlabsExceptions.SlabMax IS NOT NULL THEN ProvidersOperatorsSlabsExceptions.SlabMax ELSE ProvidersOperatorsSlabsLive.SlabMax END AS SlabMax, ProvidersOperatorsSlabsLive.NetRatio AS MainNet, ProvidersOperatorsSlabsExceptions.NetRatio AS Ecp
+FROM (
+    SELECT 
+    Subscribers.IDService, Subscribers.IDPaymentProvider, Subscribers.IDOperator, subscriptiondate AS Date, IDSmartCampaign, Subscribers.IDOffer, CP_Services.IDClient,
+    COUNT(*) AS 'New', sum(Renewals) as 'ReNew', sum(TotalRevenue*BP_Currency.USDExchange) as 'Revenue', Clients.revenueRatio AS ClientNetRatio,
+    'Subscribers' as Source, BP_Currency.USDExchange AS USDExchange, BP_Currency.CurrencyValue AS Currency
+    FROM MobiBox_Live.Subscribers
+    INNER JOIN MobiBox_Live.BP_BillingChannels on BP_BillingChannels.ID = Subscribers.IDBillingChannel 
+    INNER JOIN MobiBox_Live.BP_Currency ON BP_BillingChannels.IDCurrency = BP_Currency.ID
+    INNER JOIN  MobiBox_Live.CP_Services ON CP_Services.ID=Subscribers.IDService
+    INNER JOIN  MobiBox_Live.Clients on Clients.ID = CP_Services.IDClient
+    WHERE subscriptiondate >= '2021-01-01'
+    and (IDSubscriberStatus is null or IDSubscriberStatus=1)
+    GROUP BY IDService, IDPaymentProvider, IDOperator, subscriptiondate, IDSmartCampaign, IDOffer, BP_Currency.USDExchange, BP_Currency.CurrencyValue
+    
+    UNION ALL
+    
+    SELECT 
+    SubscribersDeleted.IDService, SubscribersDeleted.IDPaymentProvider, SubscribersDeleted.IDOperator, subscriptiondate AS Date, IDSmartCampaign, SubscribersDeleted.IDOffer, CP_Services.IDClient,
+    COUNT(*) AS 'New', sum(Renewals) as 'ReNew', sum(TotalRevenue*BP_Currency.USDExchange) as 'Revenue', Clients.revenueRatio AS ClientNetRatio,
+    'SubscribersDeleted' as Source, BP_Currency.USDExchange AS USDExchange, BP_Currency.CurrencyValue AS Currency
+    FROM MobiBox_Live.SubscribersDeleted
+    INNER JOIN MobiBox_Live.BP_BillingChannels on BP_BillingChannels.ID = SubscribersDeleted.IDBillingChannel 
+    INNER JOIN MobiBox_Live.BP_Currency ON BP_BillingChannels.IDCurrency = BP_Currency.ID
+    INNER JOIN  MobiBox_Live.CP_Services ON CP_Services.ID=SubscribersDeleted.IDService
+    INNER JOIN  MobiBox_Live.Clients on Clients.ID = CP_Services.IDClient
+    WHERE subscriptiondate  >= '2021-01-01'
+    and (IDSubscriberStatus is null or IDSubscriberStatus=1)
+    GROUP BY IDService, IDPaymentProvider, IDOperator, subscriptiondate, IDSmartCampaign, IDOffer, BP_Currency.USDExchange, BP_Currency.CurrencyValue) as dlr
+
+
+LEFT OUTER JOIN (SELECT DISTINCT
+BP_ProvidersOperatorsSlabsLive.NetRatio, BP_ProvidersOperatorsSlabsLive.SlabMin, BP_ProvidersOperatorsSlabsLive.SlabMax, BP_ProvidersOperatorsSlabsLive.EndDate, BP_ProvidersOperatorsSlabsLive.StartDate, BP_ProvidersOperatorsSettings.idoperator, BP_ProvidersOperatorsSettings.IDPaymentProvider
+FROM  MobiBox_Live.BP_ProvidersOperatorsSlabsLive INNER JOIN  MobiBox_Live.BP_ProvidersOperatorsSettings ON BP_ProvidersOperatorsSlabsLive.IDConfig = BP_ProvidersOperatorsSettings.ID
+GROUP BY BP_ProvidersOperatorsSettings.idoperator, BP_ProvidersOperatorsSettings.IDPaymentProvider, StartDate, EndDate, NetRatio) AS ProvidersOperatorsSlabsLive
+ON ProvidersOperatorsSlabsLive.idoperator = dlr.idoperator AND ProvidersOperatorsSlabsLive.IDPaymentProvider = dlr.IDPaymentProvider AND date(ProvidersOperatorsSlabsLive.EndDate) >= date(dlr.Date) AND date(ProvidersOperatorsSlabsLive.StartDate) <= date(dlr.Date) AND ProvidersOperatorsSlabsLive.SlabMin <= dlr.Revenue AND ProvidersOperatorsSlabsLive.SlabMax >= dlr.Revenue
+LEFT OUTER JOIN
+/* Providers AggregationRatio */
+(SELECT DISTINCT
+BP_ProvidersAggregationRatios.IDClient, BP_ProvidersAggregationRatios.IDPaymentProvider, BP_ProvidersAggregationRatios.AggregationRatio
+FROM  MobiBox_Live.BP_ProvidersAggregationRatios
+GROUP BY BP_ProvidersAggregationRatios.IDClient, BP_ProvidersAggregationRatios.IDPaymentProvider) AS Provagg
+ON Provagg.IDClient = dlr.IDClient AND Provagg.IDPaymentProvider = dlr.IDPaymentProvider
+LEFT OUTER JOIN
+/* BP_ProvidersAggregationRatiosExceptions */
+(SELECT
+BP_ProvidersAggregationRatiosExceptions.IDService, BP_ProvidersAggregationRatiosExceptions.IDPaymentProvider, BP_ProvidersAggregationRatiosExceptions.AggregationRatio
+FROM  MobiBox_Live.BP_ProvidersAggregationRatiosExceptions
+GROUP BY BP_ProvidersAggregationRatiosExceptions.IDService, BP_ProvidersAggregationRatiosExceptions.IDPaymentProvider) AS ProvaggException
+ON ProvaggException.IDService = dlr.IDservice AND ProvaggException.IDPaymentProvider = dlr.IDPaymentProvider
+LEFT OUTER JOIN
+/* BP_ProvidersAggregationRatiosExceptions */
+(SELECT DISTINCT
+BP_ServicesSlabsExceptions.IDService, BP_ServicesSlabsExceptions.NetRatio
+FROM  MobiBox_Live.BP_ServicesSlabsExceptions
+GROUP BY BP_ServicesSlabsExceptions.IDService) AS ServicesSlabsExceptions
+ON ServicesSlabsExceptions.IDService = dlr.IDservice
+LEFT OUTER JOIN
+/* ProvidersOperatorsSlabsExceptions */
+(SELECT DISTINCT
+BP_ProvidersOperatorsSlabsExceptions.NetRatio, BP_ProvidersOperatorsSlabsExceptions.SlabMin, BP_ProvidersOperatorsSlabsExceptions.SlabMax, BP_ProvidersOperatorsSlabsExceptions.EndDate, BP_ProvidersOperatorsSlabsExceptions.StartDate, BP_ProvidersOperatorsSlabsExceptions.IDService, BP_ProvidersOperatorsSettings.idoperator, BP_ProvidersOperatorsSettings.IDPaymentProvider
+FROM  MobiBox_Live.BP_ProvidersOperatorsSlabsExceptions INNER JOIN  MobiBox_Live.BP_ProvidersOperatorsSettings ON BP_ProvidersOperatorsSlabsExceptions.IDConfig = BP_ProvidersOperatorsSettings.ID
+GROUP BY BP_ProvidersOperatorsSettings.idoperator, BP_ProvidersOperatorsSettings.IDPaymentProvider, StartDate, EndDate, NetRatio, SlabMin, SlabMax, BP_ProvidersOperatorsSlabsExceptions.IDService) AS ProvidersOperatorsSlabsExceptions
+ON ProvidersOperatorsSlabsExceptions.idoperator = dlr.idoperator AND ProvidersOperatorsSlabsExceptions.IDPaymentProvider = dlr.IDPaymentProvider AND ProvidersOperatorsSlabsExceptions.IDService = dlr.IDService AND date(ProvidersOperatorsSlabsExceptions.EndDate) > date(dlr.Date) AND date(ProvidersOperatorsSlabsExceptions.StartDate) < date(dlr.Date) AND ProvidersOperatorsSlabsExceptions.SlabMin <= dlr.Revenue AND ProvidersOperatorsSlabsExceptions.SlabMax >= dlr.Revenue
+GROUP BY dlr.Date, dlr.IDPaymentProvider, dlr.IDService, dlr.idoperator, dlr.IDSmartCampaign, dlr.Source, dlr.IDOffer) AS t
+group by Date, IDPaymentProvider, IDService, IDOperator, IDSmartCampaign, IDOffer) as userbehaviour on userbehaviour.Campconcat = MainsetPayment.Campconcat
+
+left join (SELECT concat(a.IDService,'-',a.IDOperator,'-',IDSmartCampaign,'-', mbconversiondate, '-', IDProvider, '-', IDOffer) as Campconcat,
+ sum(counts) as counts, mbcparate, sum(counts * mbcparate) AS AdvCost, BP_Platforms.Name as Platform, mbconversiondate
+ FROM  MobiBox_Live.Installs_Client_Conversion_Summary as a
+ left join  MobiBox_Live.BP_Platforms on a.IDPlatform= BP_Platforms.Id
+ WHERE mbconversiondate >= '2021-01-01'
+and concat(IDClient, '-', IDCountry) in (
+select distinct concat(Clients.ID, '-', BP_Countries.ID) from MobiBox_Live.BP_PaymentProviders
+left join MobiBox_Live.BP_BillingChannels on BP_BillingChannels.IDPaymentProvider = BP_PaymentProviders.ID
+left join MobiBox_Live.BP_Operators on BP_BillingChannels.IDOperator = BP_Operators.ID
+left join MobiBox_Live.Clients on Clients.ID = BP_BillingChannels.IDClient
+left join MobiBox_Live.BP_Countries on BP_Operators.IDCountry = BP_Countries.ID
+where IDType=1 and concat(BP_Countries.ID,'-',IDPaymentProvider) not in ('1-2', '10-2')
+Group By Clients.ID, BP_Countries.ID) 
+GROUP BY mbconversiondate, a.IDOperator, a.IDService, IDProvider, IDSmartCampaign, IDOffer) as AdvSetPayment ON AdvSetPayment.Campconcat = MainsetPayment.Campconcat
+
+left join MobiBox_Live.CP_Services on CP_Services.Id = MainsetPayment.IDService
+left join MobiBox_Live.Clients on Clients.id = CP_Services.IDClient
+left join MobiBox_Live.BP_Entities on BP_Entities.id = Clients.IDEntity
+
+Group by 
+date, Year, Month,  
+Service,
+Provider,
+Country,
+Operator,
+Network,
+NetworksGroups,
+PublisherType,
+Entity,
+ClientMemberShipUserID,
+CampaignType,
+GUID
